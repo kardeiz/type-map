@@ -72,6 +72,84 @@ impl fmt::Debug for Extensions {
     }
 }
 
+/// Provides the same `Extensions` container, but with `Send` + `Sync` bounds on values
+pub mod concurrent {
+
+    use std::any::{Any, TypeId};
+    use std::fmt;
+
+    use fxhash::FxHashMap;
+
+    #[derive(Default)]
+    /// A type map of extensions.
+    pub struct Extensions {
+        map: Option<FxHashMap<TypeId, Box<dyn Any + Send + Sync>>>,
+    }
+
+    impl Extensions {
+        /// Create an empty `Extensions`.
+        #[inline]
+        pub fn new() -> Extensions {
+            Extensions { map: None }
+        }
+
+        /// Insert a value into this `Extensions`.
+        ///
+        /// If a extension of this type already exists, it will
+        /// be returned.
+        pub fn insert<T: Send + Sync + 'static>(&mut self, val: T) -> Option<T> {
+            self.map
+                .get_or_insert_with(|| FxHashMap::default())
+                .insert(TypeId::of::<T>(), Box::new(val))
+                .and_then(|boxed| (boxed as Box<dyn Any + 'static>).downcast().ok().map(|boxed| *boxed))
+
+        }
+
+        /// Check if container contains typed value
+        pub fn contains<T: Send + Sync + 'static>(&self) -> bool {
+            self.map.as_ref().and_then(|m| m.get(&TypeId::of::<T>())).is_some()
+        }
+
+        /// Get a reference to a typed value previously inserted on this `Extensions`.
+        pub fn get<T: Send + Sync + 'static>(&self) -> Option<&T> {
+            self.map
+                .as_ref()
+                .and_then(|m| m.get(&TypeId::of::<T>()))
+                .and_then(|boxed| (&**boxed as &(dyn Any + 'static)).downcast_ref())
+        }
+
+        /// Get a mutable reference to a typed value previously inserted on this `Extensions`.
+        pub fn get_mut<T: Send + Sync + 'static>(&mut self) -> Option<&mut T> {
+            self.map
+                .as_mut()
+                .and_then(|m| m.get_mut(&TypeId::of::<T>()))
+                .and_then(|boxed| (&mut **boxed as &mut (dyn Any + 'static)).downcast_mut())
+        }
+
+        /// Remove a typed value from this `Extensions`.
+        ///
+        /// If a value of this type exists, it will be returned.
+        pub fn remove<T: 'static>(&mut self) -> Option<T> {
+            self.map
+                .as_mut()
+                .and_then(|m| m.remove(&TypeId::of::<T>()))
+                .and_then(|boxed| (boxed as Box<dyn Any + 'static>).downcast().ok().map(|boxed| *boxed))
+        }
+
+        /// Clear the `Extensions` of all inserted values.
+        #[inline]
+        pub fn clear(&mut self) {
+            self.map = None;
+        }
+    }
+
+    impl fmt::Debug for Extensions {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.debug_struct("Extensions").finish()
+        }
+    }
+}
+
 #[test]
 fn test_extensions() {
     #[derive(Debug, PartialEq)]
