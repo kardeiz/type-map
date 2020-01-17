@@ -1,10 +1,10 @@
 [package]
-name = "extensions"
+name = "type-map"
 version = "0.2.0"
 authors = ["Jacob Brown <kardeiz@gmail.com>"]
 edition = "2018"
 license = "MIT/Apache-2.0"
-repository  = "https://github.com/kardeiz/extensions"
+repository  = "https://github.com/kardeiz/type-map"
 readme = "README.md"
 keywords = ["typemap", "extensions", "hashmap"]
 description = "Provides a typemap container with FxHashMap"

@@ -4,75 +4,74 @@ use std::fmt;
 use fxhash::FxHashMap;
 
 #[derive(Default)]
-/// A type map of extensions.
-pub struct Extensions {
+/// The typemap container
+pub struct TypeMap {
     map: Option<FxHashMap<TypeId, Box<dyn Any>>>,
 }
 
-impl Extensions {
-    /// Create an empty `Extensions`.
+impl TypeMap {
+    /// Create an empty `TypeMap`.
     #[inline]
-    pub fn new() -> Extensions {
-        Extensions { map: None }
+    pub fn new() -> Self {
+        Self { map: None }
     }
 
-    /// Insert a value into this `Extensions`.
+    /// Insert a value into this `TypeMap`.
     ///
-    /// If a extension of this type already exists, it will
-    /// be returned.
+    /// If a value of this type already exists, it will be returned.
     pub fn insert<T: 'static>(&mut self, val: T) -> Option<T> {
         self.map
             .get_or_insert_with(|| FxHashMap::default())
             .insert(TypeId::of::<T>(), Box::new(val))
-            .and_then(|boxed| (boxed as Box<dyn Any + 'static>).downcast().ok().map(|boxed| *boxed))
+            .and_then(|boxed| (boxed as Box<dyn Any>).downcast().ok().map(|boxed| *boxed))
 
     }
 
-    /// Check if container contains typed value
+    /// Check if container contains value for type
     pub fn contains<T: 'static>(&self) -> bool {
         self.map.as_ref().and_then(|m| m.get(&TypeId::of::<T>())).is_some()
     }
 
-    /// Get a reference to a typed value previously inserted on this `Extensions`.
+    /// Get a reference to a value previously inserted on this `TypeMap`.
     pub fn get<T: 'static>(&self) -> Option<&T> {
         self.map
             .as_ref()
             .and_then(|m| m.get(&TypeId::of::<T>()))
-            .and_then(|boxed| (&**boxed as &(dyn Any + 'static)).downcast_ref())
+            .and_then(|boxed| (&**boxed as &(dyn Any)).downcast_ref())
     }
 
-    /// Get a mutable reference to a typed value previously inserted on this `Extensions`.
+    /// Get a mutable reference to a value previously inserted on this `TypeMap`.
     pub fn get_mut<T: 'static>(&mut self) -> Option<&mut T> {
         self.map
             .as_mut()
             .and_then(|m| m.get_mut(&TypeId::of::<T>()))
-            .and_then(|boxed| (&mut **boxed as &mut (dyn Any + 'static)).downcast_mut())
+            .and_then(|boxed| (&mut **boxed as &mut (dyn Any)).downcast_mut())
     }
 
-    /// Remove a typed value from this `Extensions`.
+    /// Remove a value from this `TypeMap`.
     ///
     /// If a value of this type exists, it will be returned.
     pub fn remove<T: 'static>(&mut self) -> Option<T> {
         self.map
             .as_mut()
             .and_then(|m| m.remove(&TypeId::of::<T>()))
-            .and_then(|boxed| (boxed as Box<dyn Any + 'static>).downcast().ok().map(|boxed| *boxed))
+            .and_then(|boxed| (boxed as Box<dyn Any>).downcast().ok().map(|boxed| *boxed))
     }
 
-    /// Clear the `Extensions` of all inserted values.
+    /// Clear the `TypeMap` of all inserted values.
     #[inline]
     pub fn clear(&mut self) {
         self.map = None;
     }
 }
 
-impl fmt::Debug for Extensions {
+impl fmt::Debug for TypeMap {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Extensions").finish()
+        f.debug_struct("TypeMap").finish()
     }
 }
 
-/// Provides the same `Extensions` container, but with `Send` + `Sync` bounds on values
+/// Provides the same `TypeMap` container, but with `Send` + `Sync` bounds on values
 pub mod concurrent {
 
     use std::any::{Any, TypeId};
@@ -81,91 +80,90 @@ pub mod concurrent {
     use fxhash::FxHashMap;
 
     #[derive(Default)]
-    /// A type map of extensions.
-    pub struct Extensions {
+    /// The typemap container
+    pub struct TypeMap {
         map: Option<FxHashMap<TypeId, Box<dyn Any + Send + Sync>>>,
     }
 
-    impl Extensions {
-        /// Create an empty `Extensions`.
+    impl TypeMap {
+        /// Create an empty `TypeMap`.
         #[inline]
-        pub fn new() -> Extensions {
-            Extensions { map: None }
+        pub fn new() -> Self {
+            Self { map: None }
         }
 
-        /// Insert a value into this `Extensions`.
+        /// Insert a value into this `TypeMap`.
         ///
-        /// If a extension of this type already exists, it will
-        /// be returned.
+        /// If a value of this type already exists, it will be returned.
         pub fn insert<T: Send + Sync + 'static>(&mut self, val: T) -> Option<T> {
             self.map
                 .get_or_insert_with(|| FxHashMap::default())
                 .insert(TypeId::of::<T>(), Box::new(val))
-                .and_then(|boxed| (boxed as Box<dyn Any + 'static>).downcast().ok().map(|boxed| *boxed))
+                .and_then(|boxed| (boxed as Box<dyn Any>).downcast().ok().map(|boxed| *boxed))
 
         }
 
-        /// Check if container contains typed value
-        pub fn contains<T: Send + Sync + 'static>(&self) -> bool {
+        /// Check if container contains value for type
+        pub fn contains<T: 'static>(&self) -> bool {
             self.map.as_ref().and_then(|m| m.get(&TypeId::of::<T>())).is_some()
         }
 
-        /// Get a reference to a typed value previously inserted on this `Extensions`.
-        pub fn get<T: Send + Sync + 'static>(&self) -> Option<&T> {
+        /// Get a reference to a value previously inserted on this `TypeMap`.
+        pub fn get<T: 'static>(&self) -> Option<&T> {
             self.map
                 .as_ref()
                 .and_then(|m| m.get(&TypeId::of::<T>()))
-                .and_then(|boxed| (&**boxed as &(dyn Any + 'static)).downcast_ref())
+                .and_then(|boxed| (&**boxed as &(dyn Any)).downcast_ref())
         }
 
-        /// Get a mutable reference to a typed value previously inserted on this `Extensions`.
-        pub fn get_mut<T: Send + Sync + 'static>(&mut self) -> Option<&mut T> {
+        /// Get a mutable reference to a value previously inserted on this `TypeMap`.
+        pub fn get_mut<T: 'static>(&mut self) -> Option<&mut T> {
             self.map
                 .as_mut()
                 .and_then(|m| m.get_mut(&TypeId::of::<T>()))
-                .and_then(|boxed| (&mut **boxed as &mut (dyn Any + 'static)).downcast_mut())
+                .and_then(|boxed| (&mut **boxed as &mut (dyn Any)).downcast_mut())
         }
 
-        /// Remove a typed value from this `Extensions`.
+        /// Remove a value from this `TypeMap`.
         ///
         /// If a value of this type exists, it will be returned.
         pub fn remove<T: 'static>(&mut self) -> Option<T> {
             self.map
                 .as_mut()
                 .and_then(|m| m.remove(&TypeId::of::<T>()))
-                .and_then(|boxed| (boxed as Box<dyn Any + 'static>).downcast().ok().map(|boxed| *boxed))
+                .and_then(|boxed| (boxed as Box<dyn Any>).downcast().ok().map(|boxed| *boxed))
         }
 
-        /// Clear the `Extensions` of all inserted values.
+        /// Clear the `TypeMap` of all inserted values.
         #[inline]
         pub fn clear(&mut self) {
             self.map = None;
         }
     }
 
-    impl fmt::Debug for Extensions {
+    impl fmt::Debug for TypeMap {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.debug_struct("Extensions").finish()
+            f.debug_struct("TypeMap").finish()
         }
     }
 }
 
 #[test]
-fn test_extensions() {
+fn test_type_map() {
     #[derive(Debug, PartialEq)]
     struct MyType(i32);
 
-    let mut extensions = Extensions::new();
+    let mut map = TypeMap::new();
 
-    extensions.insert(5i32);
-    extensions.insert(MyType(10));
+    map.insert(5i32);
+    map.insert(MyType(10));
 
-    assert_eq!(extensions.get(), Some(&5i32));
-    assert_eq!(extensions.get_mut(), Some(&mut 5i32));
+    assert_eq!(map.get(), Some(&5i32));
+    assert_eq!(map.get_mut(), Some(&mut 5i32));
 
-    assert_eq!(extensions.remove::<i32>(), Some(5i32));
-    assert!(extensions.get::<i32>().is_none());
+    assert_eq!(map.remove::<i32>(), Some(5i32));
+    assert!(map.get::<i32>().is_none());
 
-    assert_eq!(extensions.get::<bool>(), None);
-    assert_eq!(extensions.get(), Some(&MyType(10)));
+    assert_eq!(map.get::<bool>(), None);
+    assert_eq!(map.get(), Some(&MyType(10)));
 }
