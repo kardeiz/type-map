@@ -5,6 +5,20 @@ use rustc_hash::FxHashMap;
 use std::collections::hash_map;
 use std::marker::PhantomData;
 
+/// Prepared key-value pair
+pub struct KvPair(TypeId, Box<dyn Any>);
+
+impl KvPair {
+    pub fn new<T: 'static>(value: T) -> Self {
+        KvPair(TypeId::of::<T>(), Box::new(value))
+    }
+
+    pub fn extract<T: 'static>(self) -> Result<T, Self> {
+        let KvPair(key, value) = self;
+        value.downcast().map(|boxed| *boxed).map_err(|e| KvPair(key, e))
+    }
+}
+
 /// A view into an occupied entry in a `TypeMap`.
 #[derive(Debug)]
 pub struct OccupiedEntry<'a, T> {
@@ -94,6 +108,16 @@ impl TypeMap {
         Self { map: None }
     }
 
+    /// Insert a prepared `KvPair` into this `TypeMap`.
+    ///
+    /// If a value of this type already exists, it will be returned.
+    pub fn insert_kv_pair(&mut self, KvPair(key, value): KvPair) -> Option<KvPair> {
+        self.map
+            .get_or_insert_with(|| FxHashMap::default())
+            .insert(key, value)
+            .map(|old_value| KvPair(key, old_value))
+    }
+
     /// Insert a value into this `TypeMap`.
     ///
     /// If a value of this type already exists, it will be returned.
@@ -163,6 +187,24 @@ pub mod concurrent {
 
     use std::collections::hash_map;
     use std::marker::PhantomData;
+
+    /// Prepared key-value pair
+    pub struct KvPair(TypeId, Box<dyn Any + Send + Sync>);
+
+    impl KvPair {
+        pub fn new<T: 'static + Send + Sync>(value: T) -> Self {
+            KvPair(TypeId::of::<T>(), Box::new(value))
+        }
+
+        pub fn extract<T: 'static + Send + Sync>(self) -> Result<T, Self> {
+            let KvPair(key, value) = self;
+            if value.is::<T>() {
+                Ok((value as Box<dyn Any>).downcast().map(|boxed| *boxed).unwrap())
+            } else {
+                Err(KvPair(key, value))
+            }            
+        }
+    }
 
     /// A view into an occupied entry in a `TypeMap`.
     #[derive(Debug)]
@@ -254,6 +296,16 @@ pub mod concurrent {
         #[inline]
         pub fn new() -> Self {
             Self { map: None }
+        }
+
+        /// Insert a prepared `KvPair` into this `TypeMap`.
+        ///
+        /// If a value of this type already exists, it will be returned.
+        pub fn insert_kv_pair(&mut self, KvPair(key, value): KvPair) -> Option<KvPair> {
+            self.map
+                .get_or_insert_with(|| FxHashMap::default())
+                .insert(key, value)
+                .map(|old_value| KvPair(key, old_value))
         }
 
         /// Insert a value into this `TypeMap`.
